@@ -20,6 +20,16 @@ class DevicesButton extends ActionButton {
 	get on() {
 		return this._on;
 	}
+	set visible(value) {
+		typecheck(arguments, Boolean);
+		this._visible          = false;
+		this.DOM.style.display = value
+			? 'table-cell'
+			: 'none';
+	}
+	get visible() {
+		return this._visible;
+	}
 }
 
 return DevicesButton;

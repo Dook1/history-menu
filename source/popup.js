@@ -1,7 +1,7 @@
 /************* source/popup.js - WHM Popup Entry Point Script *****************/
 /**
  * @file This file is the entry point for Wrona History Menu Popup.
- * @copyright Copyright 2015 (c) Lukasz A.J. Wrona. All rights reserved.  This
+ * @copyright Copyright 2015 (c) Lukasz A.J. Wrona. All rights reserved. This
  * file is distributed under the GNU General Public License version 3. See
  * LICENSE for details.
  * @author Lukasz A.J. Wrona (lukasz.andrzej.wrona@gmail.com)
@@ -19,8 +19,7 @@ function (ActionButton, Chrome, DevicesButton, DeviceFolder, Input, Layer,
 	Root) {
 
 // get time sectors for search
-function timeSectors() {
-	const now       = Date.now();
+function timeSectors(now) {
 	const hour      = 1000 * 3600;
 	const lastHour  = now - hour;
 	const lastDay   = now - hour * 24;
@@ -40,10 +39,165 @@ function timeSectors() {
 	];
 }
 
+class View {
+	constructor(root, i18n) {
+		this._root          = root;
+		this._i18n          = i18n;
+		this.onSearch       = function () {}
+		this._mainLayer     = new Layer;
+		this._searchLayer   = new Layer({visible: false});
+		this._deviceLayer   = new Layer({visible: false});
+		root.insert([
+			this._mainLayer,
+			this._searchLayer,
+			this._deviceLayer
+		]);
+		this._devicesButton = new DevicesButton({
+			tooltip: this._i18n("popup_other_devices"),
+			click:   function () {
+				this._devicesVisible = !this._devicesVisible;
+			}.bind(this),
+			visible: false
+		});
+		root.insert(new MultiButton({
+			children: [
+				new Input({
+					placeholder: this._i18n("popup_search_history"),
+					lockon:      true,
+					change:      function (value) {
+						this.onSearch(value);
+					}.bind(this)
+				}),
+				this._devicesButton,
+				new ActionButton({
+					tooltip: this._i18n("popup_history_manager"),
+					icon:    "icons/history-19.png",
+					click:   function (e) {
+						Chrome.tabs.openOrSelect("chrome://history/", false);
+					}
+				}),
+				new ActionButton({
+					tooltip: this._i18n("popup_options"),
+					icon:    "icons/options.png",
+					click:   function (e) {
+						Chrome.tabs.openOrSelect(
+							"chrome://extensions/?options=", false);
+					}
+				})
+			]
+		}));
+	}
+	setRecent(sessions, history, sessionsFirst) {
+		typecheck(arguments, Array, Array, Boolean);
+		const sessionNodes = sessions.map(function (session) {
+			return session.tab
+				? new TabButton(session.tab)
+				: new WindowFolder(session.window);
+			});
+		const historyNodes = history.map(function (item) {
+			return new HistoryButton(item);
+		});
+		if (sessionNodes.length > 0) {
+			sessionNodes.unshift(new Separator({
+				title: this._i18n("popup_recently_closed_tabs")
+			}));
+		}
+		if (historyNodes.length > 0) {
+			historyNodes.unshift(new Separator({
+				title: this._i18n("popup_recent_history")
+			}));
+		}
+		const children = sessionsFirst 
+			? sessionNodes.concat(historyNodes) 
+			: historyNodes.concat(sessionNodes);
+		if (children.length == 0) {
+			history.unshift(new Separator({
+				title: this._i18n("results_nothing_found")
+			}));
+		}
+		this._mainLayer.children = children;
+	}
+	setDevices(devices) {
+		const deviceNodes = devices.map(function (device) {
+			return new DeviceFolder(device);
+		});
+		this._deviceLayer.children  = deviceNodes;
+		this._devicesButton.visible = deviceNodes.length > 0;
+	}
+	beginSearch() {
+		this._devicesVisible = false;
+		this._searchLayer.visible = true;
+		this._searchLayer.clear();
+		this._searchLayer.insert(new Progressbar);
+	}
+	endSearch() {
+		this._searchLayer.remove(this._searchLayer.children[0]);
+		this._searchLayer.insert(new Separator({
+			title: this._i18n("search_results_end")
+		}));
+	}
+	clearSearch() {
+		this._searchLayer.visible = false;
+	}
+	pushSearchResult(results, separatorI18n) {
+		this._searchLayer.insert([
+			new Separator({title: i18n(separatorI18n)})
+		]).concat(results.map(function (item) {
+			return new HistoryButton(item);
+		}));
+	}
+	get width() {
+		return this._root.width;
+	}
+	set width(value) {
+		typecheck(arguments, Number);
+		this._root.width = value;
+	}
+	get height() {
+		return this._root.height;
+	}
+	set height(value) {
+		typecheck(arguments, Number);
+		this._root.height = value;
+	}
+	set animate(value) {
+		typecheck(arguments, Boolean);
+		this._animate = value;
+		this._root.setTheme(this._theme || "", this._animate);
+	}
+	get animate() {
+		return this._animate;
+	}
+	set theme(value) {
+		typecheck(arguments, String);
+		this._theme = value;
+		this._root.setTheme(this._theme, this._animate || false);
+	}
+	get theme() {
+		return this._theme;
+	}
+	get timer() {
+		return this._timer;
+	}
+	set timer(value) {
+		typecheck(arguments, Boolean);
+		this._timer = value;
+	}
+	// private _devicesVisible
+	set _devicesVisible(value) {
+		typecheck(arguments, Boolean);
+		this._deviceLayer.visible = value;
+		this._devicesButton.on    = value;
+	}
+	get _devicesVisible() {
+		return this._deviceLayer.visible;
+	}
+}
+
 class Token {
 	constructor(tokenFactory) {
 		typecheck(arguments, TokenFactory);
-		tokenFactory._id += 1;
+		tokenFactory._id   += 1;
 		this._id           = tokenFactory._id;
 		this._tokenFactory = tokenFactory;
 	}
@@ -61,257 +215,74 @@ class TokenFactory {
 	}
 }
 
-const tokenFactory = new TokenFactory();
-let selectedResult = 0;
-let searchResults  = [];
-
-const keyCode = {
-	arrowUp:   38,
-	arrowDown: 40,
-	tab:       9,
-	enter:     13
-};
-
-window.addEventListener("keydown", function (e) {
-	if ((e.keyCode == keyCode.arrowDown 
-			|| e.keyCode == keyCode.tab && !e.shiftKey)
-		&& selectedResult + 1 <
-			searchResults.length) {
-		searchResults[selectedResult].highlighted = false;
-		selectedResult++;
-		searchResults[selectedResult].highlighted = true;
-		if (searchResults[selectedResult - 5]) {
-			searchResults[selectedResult - 5].DOM.scrollIntoView();
-		}
-		e.preventDefault();
-	} else if ((e.keyCode == keyCode.arrowUp 
-			|| e.keyCode == keyCode.tab && e.shiftKey)
-		&& selectedResult - 1 >= 0) {
-		searchResults[selectedResult].highlighted = false;
-		selectedResult--;
-		searchResults[selectedResult].highlighted = true;
-		if (searchResults[selectedResult - 5]) {
-			searchResults[selectedResult - 5].DOM.scrollIntoView();
-		}
-		e.preventDefault();
-	} else if (e.keyCode == keyCode.enter) {
-		if (searchResults.length > 0) {
-			searchResults[selectedResult].click({
-				preventDefault: e.preventDefault.bind(e),
-				ctrlClick: e.shiftKey
-			});
-		}
-	}
-});
-
-function onSearch(deviceLayer, deivcesButton, searchLayer, i18n, settings,
-		value) {
-	if (deviceLayer) {
-		deviceLayer.visible = false;
-		devicesButton.on    = false;
-	}
-	typecheck(arguments,
-		[Layer,         undefined],
-		[DevicesButton, undefined],
-		Layer,
-		Object,
-		Object,
-		String);
-	const token         = new Token(tokenFactory);
-	selectedResult      = 0;
-	searchResults       = new Array;
-	searchLayer.visible = value.length > 0;
-	searchLayer.clear();
-	if (value.length > 0) {
-		searchLayer.insert(new Progressbar);
-		setTimeout(function () {
-			if (!token.valid)
-				return;
-			let promise = Promise.resolve();
-			for (const sector of timeSectors()) {
-				promise = promise.then(function () {
-					return Chrome.history.search({
-						text:      value,
-						startTime: sector.start,
-						endTime:   sector.end,
-					})
-				}).then(function (results) {
-					if (!results.length || !token.valid) 
-						return
-					const nodes = results.map(function (result) {
-						if (!settings.timer) {
-							result.lastVisitTime = null;
-						}
-						return new HistoryButton(result);
-					});
-					searchResults = searchResults.concat(nodes);
-					nodes.unshift(new Separator({title: i18n(sector.i18n)}));
-					searchLayer.insert(nodes);
-				});
-			}
-			promise.then(function () {
-				if (!token.valid)
-					return;
-				if (searchResults.length > 0) {
-					searchResults[0].highlighted = true;
-				}
-				searchLayer.remove(searchLayer.children[0]);
-				if (searchLayer.children.length) {
-					searchLayer.insert(new Separator({
-						title: i18n("results_end")
-					}));
-				} else {
-					searchLayer.insert(new Separator({
-						title: i18n("results_nothing_found")
-					}));
-				}
-			});
-		}.bind(this), 500);
-	}
-}
-
-function getMainLayer(sessions, devices, history, i18n, settings) {
-	if (sessions.length > 0) {
-		sessions.unshift(new Separator({
-			title: i18n("popup_recently_closed_tabs")
-		}));
-	}
-	if (history.length > 0) {
-		history.unshift(new Separator({
-			title: i18n("popup_recent_history")
-		}));
-	}
-	const children = settings.tabsFirst 
-		? sessions.concat(history) 
-		: history.concat(sessions);
-	if (children.length == 0) {
-		history.unshift(new Separator({
-			title: i18n("results_nothing_found")
-		}));
-	}
-	return new Layer({
-		children: children
-	});
-}
-
-function main(root, sessions, devices, history, i18n, settings) {
-	root.setTheme(settings.theme || Chrome.getPlatform(), settings.animate);
-	root.width  = parseInt(settings.width);
-	root.height = parseInt(settings.height);
-	root.insert(getMainLayer(sessions, devices, history, i18n, settings));
-	const searchLayer = root.insert(new Layer({
-		visible:  false,
-		children: [new Separator({
-			title: i18n("popup_search_history")
-		})]
-	}));
-	let devicesButton, deviceLayer;
-	const mainButtons = new MultiButton({
-		children: [
-			new Input({
-				placeholder: i18n("popup_search_history"),
-				lockon:      true,
-				change:      onSearch.bind(null, deviceLayer, devicesButton,
-					searchLayer, i18n, settings)
-			}),
-			new ActionButton({
-				tooltip: i18n("popup_history_manager"),
-				icon:    "icons/history-19.png",
-				click:   function (e) {
-					Chrome.tabs.openOrSelect("chrome://history/", false);
-				}
-			}),
-			new ActionButton({
-				tooltip: i18n("popup_options"),
-				icon:    "icons/options.png",
-				click:   function (e) {
-					Chrome.tabs.openOrSelect("chrome://extensions/?options=",
-						false);
-				}
-			})
-		]
-	});
-	if (devices.length > 0) {
-		deviceLayer = new Layer({
-			visible:  false,
-			children: devices
-		});
-		devicesButton = new DevicesButton({
-			tooltip: i18n("popup_other_devices"),
-			click:   function (e) {
-				const visible       = !deviceLayer.visible;
-				deviceLayer.visible = visible;
-				this.on             = visible;
-			}
-		});
-		root.insert(deviceLayer);
-		mainButtons.insert(devicesButton, mainButtons.children[1]);
-	}
-	root.insert(mainButtons);
-}
-
-function sessionToButton(settings, session) {
-	const object = session.tab || session.window;
-	if (settings.timer) {
-		object.lastModified = session.lastModified;
-	}
-	return session.tab
-		? new TabButton(object)
-		: new WindowFolder(object);
-}
-
-function getSessionNodes(settings) {
-	return Chrome.sessions.getRecent({
-		maxResults: parseInt(settings.tabCount)
-	}).then(function (sessions) {
-		return sessions.map(sessionToButton.bind(null, settings));
-	});
-}
-
-function getDeviceNodes(settings) {
-	return Chrome.sessions.getDevices().then(function (devices) {
-		return devices.map(function (device) {
-			if (!settings.timer) {
-				device.sessions.forEach(function (session) {
-					session.lastModified = undefined;
-				});
-			}
-			return new DeviceFolder(device)
-		});
-	});
-}
-
-function getHistoryNodes(settings) {
-	const timestamp = Date.now();
-	return Chrome.history.search({
-		text:       "", 
-		startTime:  timestamp - 1000 * 3600 * 24 * 30, 
-		endTime:    timestamp,
-		maxResults: parseInt(settings.historyCount)
-	}).then(function (results) {
-		return results.map(function (result) {
-			result.preferSelect = settings.preferSelect;
-			if (!settings.timer) {
-				result.lastVisitTime = undefined;
-			}
-			return new HistoryButton(result);
-		});
-	});
-}
-
 Chrome.fetch("defaults.json")
 	.then(JSON.parse)
 	.then(Chrome.settings.getReadOnly)
 	.then(function (settings) {
 		return Promise.all([
 			Root.ready(),
-			getSessionNodes(settings),
-			getDeviceNodes(settings),
-			getHistoryNodes(settings),
 			Chrome.getI18n(settings.lang),
 			settings
 		])
-	}).then(function (arr) {
-		main.apply(null, arr);
+	}).then(function (promises) {
+		const root      = promises[0];
+		const i18n      = promises[1];
+		const settings  = promises[2];
+		const view      = new View(root, i18n);
+		const timestamp = Date.now();
+		view.width      = settings.width;
+		view.height     = settings.height;
+		view.theme      = settings.theme || Chrome.getPlatform();
+		view.animate    = settings.animate;
+		view.timer      = settings.timer;
+		Promise.all([
+			Chrome.history.search({
+				text:       "", 
+				startTime:  timestamp - 1000 * 3600 * 24 * 30, 
+				endTime:    timestamp,
+				maxResults: parseInt(settings.historyCount)
+			}),
+			Chrome.sessions.getRecent({
+				maxResults: parseInt(settings.tabCount)
+			})
+		]).then(function (promises) {
+			view.setRecent(promises[1], promises[0], settings.tabsFirst);
+		});
+		Chrome.sessions.getDevices().then(function (devices) {
+			view.setDevices(devices);
+		});
+		// search
+		const tokenFactory = TokenFactory;
+		view.onSearch = function (value) {
+			typecheck(arguments, String);
+			const token = new Token(tokenFactory);
+			if (value.length == 0) {
+				view.clearSearch();
+			}
+			view.beginSearch();
+			timeSectors(Date.now()).reduce(function (promise, sector) {
+				return promise.then(function () {
+					return Chrome.history.search({
+						text:      value,
+						startTime: sector.start,
+						endTime:   sector.end
+					})
+				}).then(function (results) {
+					if (token.valid) {
+						view.pushSearch(results);
+					}
+				});
+			}, new Promise(function (resolve) {
+				setTimeout(function () {
+					if (token.valid) {
+						resolve();
+					}
+				}, 500);
+			})).then(function () {
+				if (token.valid) {
+					view.endSearch();
+				}
+			});
+		}
 	});
 });
