@@ -23,7 +23,7 @@ class WindowFolder extends Folder {
 			this.insert(new TabButton(tab));
 		}
 		if (wnd.lastModified) {
-			this.timer = relativeTime(wnd.lastModified * 1000);
+			this.timer = wnd.lastModified;
 		}
 		if (wnd.open !== undefined) {
 			this.open = wnd.open;
@@ -42,8 +42,8 @@ class WindowFolder extends Folder {
 		}
 	}
 	set timer(value) {
-		typecheck(arguments, [String, undefined]);
-		this._timer.nodeValue = value;
+		typecheck(arguments, [Number, undefined]);
+		this._timer.nodeValue = relativeTime(value);
 		this._timer.parentNode.classList.toggle("hidden", !value);
 	}
 	get timer() {
