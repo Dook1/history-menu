@@ -91,10 +91,12 @@ class View {
 	setRecent(sessions, history, sessionsFirst) {
 		typecheck(arguments, Array, Array, Boolean);
 		const sessionNodes = sessions.map(function (session) {
-			return session.tab
+			const sessionNode = session.tab
 				? new TabButton(session.tab)
 				: new WindowFolder(session.window);
-			});
+			sessionNode.timer = session.lastModified * 1000;
+			return sessionNode;
+		});
 		const historyNodes = history.map(function (item) {
 			return new HistoryButton(item);
 		});
@@ -126,7 +128,7 @@ class View {
 		this._devicesButton.visible = deviceNodes.length > 0;
 	}
 	beginSearch() {
-		this._devicesVisible = false;
+		this._deviceLayer.visible = false;
 		this._searchLayer.visible = true;
 		this._searchLayer.clear();
 		this._searchLayer.insert(new Progressbar);
@@ -140,12 +142,14 @@ class View {
 	clearSearch() {
 		this._searchLayer.visible = false;
 	}
-	pushSearchResult(results, separatorI18n) {
-		this._searchLayer.insert([
-			new Separator({title: i18n(separatorI18n)})
-		]).concat(results.map(function (item) {
-			return new HistoryButton(item);
-		}));
+	pushSearchResults(results, separatorI18n) {
+		if (results.length > 0) {
+			const children = results.map(function (item) {
+				return new HistoryButton(item);
+			});
+			children.unshift(new Separator({title: this._i18n(separatorI18n)}));
+			this._searchLayer.insert(children);
+		}
 	}
 	get width() {
 		return this._root.width;
@@ -236,6 +240,7 @@ Chrome.fetch("defaults.json")
 		view.theme      = settings.theme || Chrome.getPlatform();
 		view.animate    = settings.animate;
 		view.timer      = settings.timer;
+		window.view     = view;
 		Promise.all([
 			Chrome.history.search({
 				text:       "", 
@@ -253,37 +258,39 @@ Chrome.fetch("defaults.json")
 			view.setDevices(devices);
 		});
 		// search
-		const tokenFactory = TokenFactory;
+		const tokenFactory = new TokenFactory;
 		view.onSearch = function (value) {
 			typecheck(arguments, String);
 			const token = new Token(tokenFactory);
 			if (value.length == 0) {
 				view.clearSearch();
-			}
-			view.beginSearch();
-			timeSectors(Date.now()).reduce(function (promise, sector) {
-				return promise.then(function () {
-					return Chrome.history.search({
-						text:      value,
-						startTime: sector.start,
-						endTime:   sector.end
-					})
-				}).then(function (results) {
+			} else {
+				view.beginSearch();
+				timeSectors(Date.now()).reduce(function (promise, sector) {
+					return promise.then(function () {
+						return Chrome.history.search({
+							text:      value,
+							startTime: sector.start,
+							endTime:   sector.end
+						})
+					}).then(function (results) {
+						if (token.valid) {
+							view.pushSearchResults(results, sector.i18n);
+						}
+					});
+				}, new Promise(function (resolve) {
+					setTimeout(function () {
+						if (token.valid) {
+							console.log("thend");
+							resolve();
+						}
+					}, 500);
+				})).then(function () {
 					if (token.valid) {
-						view.pushSearch(results);
+						view.endSearch();
 					}
 				});
-			}, new Promise(function (resolve) {
-				setTimeout(function () {
-					if (token.valid) {
-						resolve();
-					}
-				}, 500);
-			})).then(function () {
-				if (token.valid) {
-					view.endSearch();
-				}
-			});
+			}
 		}
 	});
 });
