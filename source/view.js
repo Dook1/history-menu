@@ -1,4 +1,5 @@
 "use strict";
+
 define(["./ActionButton", "./Chrome", "./DevicesButton", "./DeviceFolder",
 		"./libraries/ui/source/Input", "./libraries/ui/source/Layer",
 		"./libraries/ui/source/MultiButton",
@@ -12,12 +13,15 @@ function (ActionButton, Chrome, DevicesButton, DeviceFolder, Input, Layer,
 class View {
 	constructor(root, i18n) {
 		typecheck(arguments, Root, Function);
-		this._root          = root;
-		this._i18n          = i18n;
-		this.onSearch       = function () {}
-		this._mainLayer     = new Layer;
-		this._searchLayer   = new Layer({visible: false});
-		this._deviceLayer   = new Layer({visible: false});
+		this._root            = root;
+		this._i18n            = i18n;
+		this.onSearch         = function () {}
+		this._mainLayer       = new Layer;
+		this._searchLayer     = new Layer({visible: false});
+		this._deviceLayer     = new Layer({visible: false});
+		this.onSessionRestore = function () { }
+		this.onTabCreate      = function () { }
+		this.onHistoryRemove  = function () { }
 		root.insert([
 			this._mainLayer,
 			this._searchLayer,
@@ -44,16 +48,22 @@ class View {
 					tooltip: this._i18n("popup_history_manager"),
 					icon:    "icons/history-19.png",
 					click:   function (e) {
-						Chrome.tabs.openOrSelect("chrome://history/", false);
-					}
+						this.tabCreate({
+							url:          "chrome://history/",
+							inBackground: false
+						});
+					}.bind(this)
 				}),
 				new ActionButton({
 					tooltip: this._i18n("popup_options"),
 					icon:    "icons/options.png",
 					click:   function (e) {
-						Chrome.tabs.openOrSelect(
-							"chrome://extensions/?options=", false);
-					}
+						this.tabCreate({
+							url:          "chrome://extensions/?options"
+							              + chrome.runtime.id,
+							inBackground: false
+						});
+					}.bind(this)
 				})
 			]
 		}));
@@ -61,12 +71,25 @@ class View {
 	setRecent(sessions, history, sessionsFirst) {
 		typecheck(arguments, Array, Array, Boolean);
 		const sessionNodes = sessions.map(function (session) {
-			const sessionNode = session.tab
-				? new TabButton(session.tab)
-				: new WindowFolder(session.window);
-			sessionNode.timer = session.lastModified * 1000;
-			return sessionNode;
-		});
+			if (session.tab) {
+				const tab = session.tab;
+				return new TabButton({
+					view:      this,
+					timer:     tab.lastModified * 1000,
+					sessionId: tab.sessionId,
+				});
+			} else if (session.window) {
+				const window = session.window;
+				return new WindowFolder({
+					view:      this,
+					timer:     window.lastModified * 1000,
+					sessionId: window.sessionId,
+					tabs:      window.tabs
+				});
+			} else {
+				throw TypeError("Invalid session object supplied");
+			}
+		}.bind(this));
 		const historyNodes = history.map(function (item) {
 			return new HistoryButton(item);
 		});

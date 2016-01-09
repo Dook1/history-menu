@@ -1,39 +1,28 @@
 "use strict"
 
-define(["./Chrome", "./TimerButton"], function(Chrome, TimerButton) {
+define(["./TimerButton"], function(TimerButton) {
 
 const removeButton = $({
-	nodeName: "DIV",
+	nodeName:  "DIV",
 	className: "Remove"
 });
 
 class HistoryButton extends TimerButton {
 	constructor(item) {
 		typecheck.loose(arguments, [{
-			tooltip:       [String, undefined],
-			title:         [String, undefined],
-			url:           String,
-			lastVisitTime: [Number, undefined],
-			preferSelect:  [Boolean, undefined]
+			title:   [String, undefined],
+			url:     String,
+			tooltip: undefined // tooltip is generated
 		}, undefined]);
-		if (!item.title) {
-			item.tooltip = item.url;
-			item.title   = trimURL(item.url);
-			item.tooltip = item.url;
-		} else {
-			item.tooltip = item.title + "\n" + item.url;
-		}
-		item.timer        = item.lastVisitTime;
 		super(item);
 		this.DOM.classList.add("History");
-		this.url          = item.url;
-		this.icon         = "chrome://favicon/" + item.url;
-		this.preferSelect = item.preferSelect;
+		this.title = item.title || "";
+		this.url   = item.url;
+		this.icon  = "chrome://favicon/" + item.url;
 		if (item.lastVisitTime) {
 			this._lastModified = item.lastVisitTime;
 		}
-		this._remove      = this.DOM.appendChild(removeButton.cloneNode(true));
-		this.preferSelect = item.preferSelect;
+		this._remove     = this.DOM.appendChild(removeButton.cloneNode(true));
 	}
 	fadeIn(e) { /* override */
 		super.fadeIn(e);
@@ -47,36 +36,52 @@ class HistoryButton extends TimerButton {
 		clearInterval(this._interval);
 	}
 	mousedown(e) /*override*/ {
-		if (e.which == 2)
+		// NOTE: without this, mouse enters scroll mode, because this is not a
+		// true HTML Anchor element with defined href
+		if (e.which == 2) {
 			e.preventDefault();
+		}
 	}
 	click(e) { /*override*/
 		e.preventDefault();
 		if (e.target == this._remove) {
-			Chrome.history.deleteUrl({ url: this.url });
-			this.parent.remove(this);
-		} else if (this.preferSelect) {
-			Chrome.tabs.openOrSelect(this.url, e.which == 2 || e.ctrlKey);
+			this._view.onHistoryRemove({
+				url: this.url
+			});
 		} else {
-			Chrome.tabs.create({
-				url:    this.url, 
-				active: !(e.which == 2 || e.ctrlKey)
-			}).then(window.close);
+			this.parent.remove(this);
+			this._view.onTabCreate({
+				url:          this.url,
+				inBackground: e.which == 2 || e.ctrlKey
+			});
 		}
 	}
-	get url() {
-		return this.DOM.href;	
+	get title() { return super.title; }
+	set title(value) { /* override */
+		typecheck(arguments, String);
+		this._hbTitle = value;
+		this._hbUpdateLabels();
 	}
+	get url() { return this.DOM.href; }
 	set url(value) {
+		typecheck(arguments, String);
 		this.DOM.href = value;
+		this._hbUpdateLabels();
 	}
 	set highlighted(value) {
 		typecheck(arguments, Boolean);
 		this._highlighted = value;
 		this.DOM.classList.toggle("highlighted", value);
 	}
-	get highlighted() {
-		return this._highlighted;
+	get highlighted() { return this._highlighted; }
+	get tooltip() { return super.tooltip; }
+	_hbUpdateLabels() {
+		if (this._hbTitle) {
+			super.tooltip = this._hbTitle + "\n" + this.url;
+		} else {
+			super.title   = trimURL(this.url);
+			super.tooltip = this.url;
+		}
 	}
 }
 

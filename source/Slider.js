@@ -3,7 +3,7 @@
 define(["./libraries/ui/source/Node"], function (_Node) {
 
 const sliderTemplate = $({
-	nodeName: "LABEL",
+	nodeName:  "LABEL",
 	className: "Slider",
 	childNodes: [
 		$({

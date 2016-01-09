@@ -6,14 +6,14 @@ define(["./libraries/ui/source/Folder", "./WindowFolder"], function (Folder,
 class DeviceFolder extends Folder {
 	constructor (device) {
 		const children = device.sessions.map(function (session) {
-			const window        = session.window;
-			window.lastModified = session.lastModified;
+			const window = session.window;
+			window.timer = session.lastModified;
 			return new WindowFolder(window);
 		});
 		super({
 			children: children
 		});
-		this.title     = device.deviceName;
+		this.title = device.deviceName;
 	}
 }
 

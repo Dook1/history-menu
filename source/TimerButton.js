@@ -1,6 +1,6 @@
 "use strict"
 
-define(["./libraries/ui/source/Button", "./Chrome"], function (Button, Chrome) {
+define(["./libraries/ui/source/Button"], function (Button) {
 const template = $({
 	nodeName: "DIV",
 	className: "Timer hidden",
@@ -9,9 +9,12 @@ const template = $({
 
 class TimerButton extends Button {
 	constructor(e) {
+		typecheck.loose(arguments, {
+			timer: [Number, undefined]
+		});
 		super(e);
 		this._timerNode = this.DOM.appendChild(template.cloneNode(true));
-		this.timer = e.timer;
+		this.timer      = e.timer;
 	}
 	fadeIn(e) { // override
 		super.fadeIn(e);

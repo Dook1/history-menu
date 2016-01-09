@@ -1,34 +1,40 @@
-"use strict"
+"use strict";
 
-define(["./Chrome", "./libraries/ui/source/Folder", "./TabButton.js"],
-		function(Chrome, Folder, TabButton) {
+define(["./libraries/ui/source/Folder", "./TabButton.js"],
+		function(Folder, TabButton) {
 
 const template = $({
-	nodeName:  "DIV",
-	className: "Timer hidden",
+	nodeName:   "DIV",
+	className:  "Timer hidden",
 	childNodes: [$("")]
 });
 
 class WindowFolder extends Folder {
 	constructor(wnd) {
 		typecheck.loose(arguments, {
+			open:      [Boolean, undefined],
 			sessionId: String,
+			view:      Object // view.js object
 		});
 		super();
-		this._timer = this.DOM.firstChild
-			.appendChild(template.cloneNode(true))
-			.firstChild;
-		this.title  = "Window (Number of tabs: " + wnd.tabs.length + ")";
-		for (const tab of wnd.tabs) {
-			this.insert(new TabButton(tab));
-		}
-		if (wnd.lastModified) {
-			this.timer = wnd.lastModified;
-		}
-		if (wnd.open !== undefined) {
-			this.open = wnd.open;
-		}
+		this._timer    = this.DOM.firstChild
+		                 .appendChild(template.cloneNode(true))
+		                 .firstChild;
+		this.insert(wnd.tabs.map(function (tab) {
+			return new TabButton({
+				view:      this.view,
+				sessionId: tab.sessionId,
+				icon:      tab.icon,
+				url:       tab.url
+			});
+		}.bind(this)));
+		this.title     = "Window (Number of tabs: " + wnd.tabs.length + ")";
+		this.open      = wnd.open !== undefined
+		                 ? wnd.open
+		                 : true;
+		this.timer     = wnd.timer;
 		this.sessionId = wnd.sessionId;
+		this._view     = view;
 	}
 	mousedown(e) { /* override */
 		e.preventDefault();
@@ -36,18 +42,13 @@ class WindowFolder extends Folder {
 	click(e) { /*override*/
 		e.preventDefault();
 		if (e.which == 2 || e.ctrlKey) {
-			Chrome.sessions.restore(this.sessionId, true);
+			this._view.onSessionRestore({
+				sessionId:    this._sessionId,
+				inBackground: e.which || e.ctrlKey
+			});
 		} else {
 			Folder.prototype.click.call(this, e);
 		}
-	}
-	set timer(value) {
-		typecheck(arguments, [Number, undefined]);
-		this._timer.nodeValue = relativeTime(value);
-		this._timer.parentNode.classList.toggle("hidden", !value);
-	}
-	get timer() {
-		return this._timer.nodeValue;
 	}
 }
 
