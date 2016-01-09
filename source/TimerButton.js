@@ -1,6 +1,6 @@
 "use strict"
 
-define(["./libraries/lajw/ui/Button", "./Chrome"], function (Button, Chrome) {
+define(["./libraries/ui/source/Button", "./Chrome"], function (Button, Chrome) {
 const template = $({
 	nodeName: "DIV",
 	className: "Timer hidden",

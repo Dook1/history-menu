@@ -10,10 +10,11 @@
 "use strict"
 
 define(["./ActionButton", "./Chrome", "./DevicesButton", "./DeviceFolder",
-		"./libraries/lajw/ui/Input", "./libraries/lajw/ui/Layer",
-		"./libraries/lajw/ui/MultiButton", "./libraries/lajw/ui/Progressbar.js",
-		"./libraries/lajw/ui/Separator", "./WindowFolder", "./TabButton",
-		"./HistoryButton", "./libraries/lajw/ui/Root"],
+		"./libraries/ui/source/Input", "./libraries/ui/source/Layer",
+		"./libraries/ui/source/MultiButton",
+		"./libraries/ui/source/Progressbar.js",
+		"./libraries/ui/source/Separator", "./WindowFolder", "./TabButton",
+		"./HistoryButton", "./libraries/ui/source/Root"],
 function (ActionButton, Chrome, DevicesButton, DeviceFolder, Input, Layer,
 	MultiButton, Progressbar, Separator, WindowFolder, TabButton, HistoryButton,
 	Root) {

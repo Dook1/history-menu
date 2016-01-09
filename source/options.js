@@ -1,9 +1,9 @@
 "use strict";
 
 // using _Node, for compatibility with Google Closure Compiler
-define(["./Chrome", "./libraries/lajw/ui/Checkbox",
-		"./libraries/lajw/ui/Header", "./libraries/lajw/ui/Node",
-		"./libraries/lajw/ui/Root", "./libraries/lajw/ui/Select",
+define(["./Chrome", "./libraries/ui/source/Checkbox",
+		"./libraries/ui/source/Header", "./libraries/ui/source/Node",
+		"./libraries/ui/source/Root", "./libraries/ui/source/Select",
 		"./Slider.js"],
 function (Chrome, Checkbox, Header, _Node, Root, Select, Slider) {
 

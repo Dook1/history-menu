@@ -1,3 +1,12 @@
 [submodule "source/libraries/requirejs"]
 	path = source/libraries/requirejs
 	url = git@github.com:jrburke/requirejs.git
+[submodule "source/libraries/ui"]
+	path = source/libraries/ui
+	url = git@github.com:lajw/ui
+[submodule "source/libraries/typecheck"]
+	path = source/libraries/typecheck
+	url = git@github.com:lajw/typecheck
+[submodule "source/libraries/utils"]
+	path = source/libraries/utils
+	url = git@github.com:lajw/utils

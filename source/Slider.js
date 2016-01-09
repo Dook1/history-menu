@@ -1,6 +1,6 @@
 "use strict"
 
-define(["./libraries/lajw/ui/Node"], function (_Node) {
+define(["./libraries/ui/source/Node"], function (_Node) {
 
 const sliderTemplate = $({
 	nodeName: "LABEL",

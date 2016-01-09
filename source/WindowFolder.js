@@ -1,6 +1,6 @@
 "use strict"
 
-define(["./Chrome", "./libraries/lajw/ui/Folder", "./TabButton.js"],
+define(["./Chrome", "./libraries/ui/source/Folder", "./TabButton.js"],
 		function(Chrome, Folder, TabButton) {
 
 const template = $({

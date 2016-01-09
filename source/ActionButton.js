@@ -1,6 +1,6 @@
 "use strict"
 
-define(["./libraries/lajw/ui/Button"], function (_Button) {
+define(["./libraries/ui/source/Button"], function (_Button) {
 
 class ActionButton extends _Button {
 	constructor (e) {
