@@ -1,4 +1,13 @@
-"use strict"
+/**
+ * @file source/Slider.js - Slider class. Requires common.js loader, like
+ * Require.js or Webpack.
+ * @copyright Copyright 2016 (c) Lukasz A.J. Wrona. All rights reserved. This
+ * file is distributed under the GNU General Public License version 3. See
+ * LICENSE for details.
+ * @author Lukasz A.J. Wrona (lukasz.andrzej.wrona@gmail.com)
+ */
+
+"use strict";
 
 define(["./libraries/ui/source/Node"], function (_Node) {
 
@@ -18,20 +27,45 @@ const sliderTemplate = $({
 	]
 });
 
+/**
+ * @brief Slider - Slider with label
+ */
 class Slider extends _Node {
-	constructor(e) {
-		e             = e || {};
-		e.DOM         = sliderTemplate.cloneNode(true);
-		super(e);
+	/**
+	 * @brief Slider constructor
+	 * Exception Safety: No-throw guarantee
+	 * @param object - Object literal:
+	 * - change Function: callback function, called when value of the slider
+	 *   changes
+	 * - max Number: (Optinoal) Maximum value, defaults to 100
+	 * - min Number: (Optional) Minimum value, defaults to 0
+	 * - step Number: (Optional) Step size, defaults to 1
+	 * - title String: (Optional) Text label next to the slider
+	 * - value Number: (Optional) Initial slider value, defaults to average
+	 *   between min and max
+	 */
+	constructor(object) {
+		typecheck(arguments, [{
+			change: [Function, undefined],
+			max:    [Number, undefined],
+			min:    [Number, undefined],
+			step:   [Number, undefined],
+			title:  [String, undefined],
+			value:  [Number, undefined]
+		}, undefined]);
+		super({
+			DOM: sliderTemplate.cloneNode(true)
+		});
+		object = object || {};
 		this._knob    = this.DOM.firstChild;
 		this._title   = this.DOM.lastChild;
 		this._display = this.DOM.childNodes[1];
-		this.change   = e.change || function () {}
-		this.title    = e.title;
-		this.min      = e.min || 0;
-		this.max      = e.max || 100;
-		this.step     = e.step || 1;
-		this.value    = e.value || 50;
+		this.change   = object.change || function () {}
+		this.max      = object.max || 100;
+		this.min      = object.min || 0;
+		this.step     = object.step || 1;
+		this.title    = object.title || "";
+		this.value    = object.value || (object.min + object.max) / 2;
 	}
 	set title(value) {
 		typecheck(arguments, String);

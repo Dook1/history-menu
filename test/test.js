@@ -1,8 +1,8 @@
 "use strict";
 
-define(["../source/ActionButton", "../source/HistoryButton",
+define(["../source/ActionButton", "../source/HistoryButton", "../source/Slider",
         "../source/TimerButton"],
-       function (ActionButton, HistoryButton, TimerButton) {
+       function (ActionButton, HistoryButton, Slider, TimerButton) {
 
 QUnit.test("ActionButton", function (assert) {
     const onClick      = function () { }
@@ -114,6 +114,59 @@ QUnit.test("HistoryButton", function (assert) {
                      "Button clicked with left mouse button and control key"
                      + " should create tab in background");
     });
+});
+
+QUnit.test("Slider", function(assert) {
+    // slider default constructor
+    (function () {
+        const slider = new Slider;
+        assert.ok(slider.click instanceof Function,
+                  "Slider.click property should default to an empty function");
+        assert.equal(slider.max, 100,
+                     "Slider.max property should default to 100");
+        assert.equal(slider.min, 0,
+                     "Slider.min property should default to 0");
+        assert.equal(slider.step, 1,
+                     "Slider.step property should default to 1");
+        assert.equal(slider.title, "",
+                     "Slider.title property should default to an empty string");
+        assert.equal(slider.value, 50,
+                     "Slider.value property should default to min max average");
+    }());
+    (function () {
+        const min    = 50;
+        const max    = 150;
+        const step   = 5;
+        const title  = "slider-title";
+        const value  = 75;
+        const slider = new Slider({
+            min:   min,
+            max:   max,
+            step:  step,
+            title: title,
+            value: value
+        });
+        assert.ok(slider.click instanceof Function,
+                  "Slider.click property should be settable through the "
+                  + "constructor");
+        assert.equal(slider.max, max,
+                     "Slider.max property should be settable through the "
+                     + "constructor");
+        assert.equal(slider.min, min,
+                     "Slider.min property should be settable through the "
+                     + "constructor");
+        assert.equal(slider.step, step,
+                     "Slider.step property should be settable through the "
+                     + "constructor");
+        assert.equal(slider.title, title,
+                     "Slider.title property should be settable through the "
+                     + "constructor");
+        assert.equal(slider.value, value,
+                     "Slider.value property should be settable through the "
+                     + "constructor");
+    }());
+    // TODO: Should add QA-like tests, max < min, value lower than max, stepsize
+    // in a wild range, etc.
 });
 
 });
