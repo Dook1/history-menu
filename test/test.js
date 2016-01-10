@@ -1,8 +1,8 @@
 "use strict";
 
 define(["../source/ActionButton", "../source/HistoryButton", "../source/Slider",
-        "../source/TimerButton"],
-       function (ActionButton, HistoryButton, Slider, TimerButton) {
+        "../source/TabButton.js", "../source/TimerButton"],
+       function (ActionButton, HistoryButton, Slider, TabButton, TimerButton) {
 
 QUnit.test("ActionButton", function (assert) {
     const onClick      = function () { }
@@ -167,6 +167,68 @@ QUnit.test("Slider", function(assert) {
     }());
     // TODO: Should add QA-like tests, max < min, value lower than max, stepsize
     // in a wild range, etc.
+});
+
+QUnit.test("TabButton", function (assert) {
+    class ViewStub {
+        constructor() {
+            this.callCount = 0;
+        }
+        onSessionRestore(object) {
+            this.callCount += 1;
+            this.restored  = object;
+        }
+    };
+    const view      = new ViewStub;
+    const title     = "tab-button-title";
+    const url       = "http://example.com/";
+    const sessionId = "session-id";
+    const tabButton = new TabButton({
+        view:      view,
+        title:     title,
+        sessionId: sessionId,
+        url:       url
+    });
+    assert.equal(tabButton.title, title,
+                 "TabBUtton.title should be settable through the constructor");
+    assert.equal(tabButton.sessionId, sessionId,
+                 "tabButton.sessionId should be settable through the "
+                 + "constructor");
+    assert.equal(tabButton.url, url,
+                 "tabButton.url should be settable through the constructor");
+    assert.equal(tabButton.icon, "chrome://favicon/http://example.com/",
+                 "tabButton.icon should be deduced from URL");
+    assert.equal(tabButton.tooltip, url,
+                 "tabButton.tooltip should be deduced from url");
+    assert.equal(view.callCount, 0,
+                 "View.onSessionRestore should not be called during "
+                 + "consturction");
+    tabButton.click({
+        which: 1,
+        preventDefault: function () {}
+    });
+    assert.equal(view.callCount, 1,
+                 "click should trigger onSessionRestore exactly once");
+    assert.equal(view.restored.sessionId, sessionId,
+                 "onSessionRestore should be supplied with correct sessionId");
+    assert.equal(view.restored.inBackground, false,
+                 "onSessionRestore should be called with inBackground set to "
+                 + "false, when clicked with left mouse button");
+    tabButton.click({
+        which: 2,
+        preventDefault: function () {}
+    });
+    assert.equal(view.restored.inBackground, true,
+                 "onSessionRestore should be called with inBackground set to "
+                 + "true, when clicked with middle mouse button");
+    tabButton.click({
+        which: 1,
+        ctrlKey: true,
+        preventDefault: function () {}
+    });
+    assert.equal(view.restored.inBackground, true,
+                 "onSessionRestore should be called with inBackground set to "
+                 + "true, when clicked with left mouse button and ctrl pressed");
 });
 
 });
