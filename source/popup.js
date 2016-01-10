@@ -7,7 +7,7 @@
  * @author Lukasz A.J. Wrona (lukasz.andrzej.wrona@gmail.com)
  */
 
-"use strict"
+"use strict";
 
 define(["./Chrome", "./libraries/ui/source/Root", "./view"],
 function (Chrome, Root, View) {
