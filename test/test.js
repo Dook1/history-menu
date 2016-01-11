@@ -1,8 +1,10 @@
 "use strict";
 
 define(["../source/ActionButton", "../source/HistoryButton", "../source/Slider",
-        "../source/TabButton.js", "../source/TimerButton"],
-       function (ActionButton, HistoryButton, Slider, TabButton, TimerButton) {
+        "../source/TabButton.js", "../source/TimerButton",
+        "../source/WindowFolder"],
+       function (ActionButton, HistoryButton, Slider, TabButton, TimerButton,
+                 WindowFolder) {
 
 QUnit.test("ActionButton", function (assert) {
     const onClick      = function () { }
@@ -229,6 +231,38 @@ QUnit.test("TabButton", function (assert) {
     assert.equal(view.restored.inBackground, true,
                  "onSessionRestore should be called with inBackground set to "
                  + "true, when clicked with left mouse button and ctrl pressed");
+});
+
+QUnit.test("WindowFolder", function(assert) {
+    class ViewStub {
+        constructor() {
+            this.callCount = 0;
+        }
+        onSessionRestore(object) {
+            this.callCount += 1;
+            this.restored  = object;
+        }
+    }
+    const view         = new ViewStub;
+    const sessionId    = "session-id";
+    // default constructor
+    const windowFolder = new WindowFolder({
+        sessionId: sessionId,
+        tabs:      [],
+        view:      view
+    });
+    assert.equal(windowFolder.open, true,
+                 "WindowFolder.open should default to true");
+    assert.equal(windowFolder.sessionId, sessionId,
+                 "WindowFolder.sessionId should be settable through the"
+                 + "constructor");
+    assert.equal(windowFolder.children.length, 0,
+                 "WindowFolder should start empty, when no children are"
+                 + "supplied");
+    assert.strictEqual(windowFolder.timer, undefined,
+                 "WindowFolder timer should default to undefined");
+    assert.strictEqual(windowFolder.title, "",
+                       "WindowFolder.title should default to an empty string");
 });
 
 });
